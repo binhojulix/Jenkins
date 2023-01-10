@@ -1,0 +1,137 @@
+- hosts: dev
+  become: yes
+  gather_facts: false 
+  vars_files:
+  - vars.yml
+
+
+  tasks:
+    - name: Install aptitude
+      apt:
+        name: aptitude
+        state: latest
+        update_cache: true
+
+    - name: Install required system packages
+      apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+          - pip 
+          - python3-dev 
+          - default-libmysqlclient-dev 
+          - build-essential
+        state: latest
+        update_cache: true
+
+    - name: Install JRE 
+      apt: 
+        name: openjdk-8-jre
+        update_cache: yes
+        install_recommends: no
+
+    - name: Install JDK
+      apt: 
+        name: openjdk-8-jdk
+        update_cache: yes
+        install_recommends: no
+
+    - name: Add APT key
+      shell: wget -q -O - https://pkg.jenkins.io/debian/jenkins-ci.org.key | apt-key add - 
+  
+    - name: Copy jenkins.list to /etc/apt/sources.list.d/jenkins.list
+      shell: sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list' 
+  
+    - name: update
+      shell: apt-get update 
+
+    - name: Install Jenkins
+      shell: apt-get install jenkins
+
+    - name: Install MySQL server
+      shell: apt-get -y install mysql-server
+
+    - name: Install MySQL client
+      shell: apt-get -y install mysql-client
+
+    - name: pip install mysqlclient
+      shell: pip install mysqlclient
+
+    - name: Start the MySQL service
+      action: service name=mysql state=started
+
+    - name: copy .my.cnf file with root password credentials
+      template: src=../configs/mysqld.cnf  dest=/etc/mysql/mysql.conf.d/mysqld.cnf owner=root mode=0600
+
+    - name: update mysql root password for all root accounts
+      mysql_user:
+        name: root
+        host: localhost
+        password: "{{ new_mysql_root_password }}"
+
+
+
+    - name: Install aptitude using apt  
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+    - name: Install required system packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt: update_cache=yes name=docker-ce state=latest
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker
+
+    - name: Pull default Docker image
+      docker_image:
+        name: "{{ default_container_image }}"
+        source: pull
+
+    # Creates the number of containers defined by the variable create_containers, using values from vars file
+    - name: Create default containers
+      docker_container:
+        name: "{{ default_container_name }}{{ item }}"
+        image: "{{ default_container_image }}"
+        command: "{{ default_container_command }}"
+        state: present
+      with_sequence: count={{ create_containers }}
+
+    
+
+
+    - name: Transfer executable script jenkins
+      copy: src=scripts/jenkins.sh dest=/home/ubuntu/jenkins.sh mode=0777
+
+
+    - name: Execute the script jenkins
+      command: sh /home/ubuntu/jenkins.sh
+
+    - name: Transfer executable script mysql
+      copy: src=scripts/mysql.sh dest=/home/ubuntu/mysql.sh mode=0777  
+  
+    - name: copy mysql config
+      copy: src=configs dest=/home/ubuntu
+
+    - name: Execute the script mysql
+      command: sh /home/ubuntu/mysql.sh
+
+      
+
