@@ -17,7 +17,7 @@
     - name: Install required system packages
       apt: name={{ item }} state=latest update_cache=yes
       loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools', 'virtualenv',
-      'python3-setuptools', 'pip', 'python3-dev', 'mysql-server', 'mysql-client', 'python3-pymysql', 'default-libmysqlclient-dev', 'build-essential', 'default-jdk', 'default-jre']
+       'pip', 'python3-dev', 'mysql-server', 'mysql-client', 'python3-pymysql', 'default-libmysqlclient-dev', 'build-essential', 'default-jdk', 'default-jre']
 
    
     - name: Remove directory if exists
@@ -31,17 +31,29 @@
 
 
     - name: download jenkins
-      shell: wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+      apt_key:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
+        state: present
 
-    - name: run sh jenkins
-      shell: sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
 
-    - name: update package
-      shell: sudo apt update
+    - name: ensure the Repository is configured
+      apt_repository: repo='deb http://pkg.jenkins.io/debian-stable binary/' state=present
+
+    - name: update apt cache
+      apt:
+        update_cache: yes
+        state: latest
 
     - name: install jenkins
-      shell: sudo apt install jenkins -y
+      apt:
+        name: jenkins
+        state: latest
 
+    - name: Start Jenkins
+      service:
+        name: jenkins
+        enabled: true
+        state: started
 
     - name: copy .my.cnf file with root password credentials
       template: src=../configs/mysqld.cnf  dest=/etc/mysql/mysql.conf.d/mysqld.cnf owner=root mode=0600
@@ -53,7 +65,6 @@
         password: "{{ new_mysql_root_password }}"
 
 
- 
     - name: Add Docker GPG apt Key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
