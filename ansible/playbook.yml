@@ -19,7 +19,7 @@
           - ca-certificates
           - curl
           - software-properties-common
-          - python3-pip
+          - python3-pip  
           - virtualenv
           - python3-setuptools
           - pip 
@@ -29,41 +29,57 @@
         state: latest
         update_cache: true
 
-    - name: Install JRE 
-      apt: 
-        name: openjdk-8-jre
-        update_cache: yes
-        install_recommends: no
+    - name: Remove directory if exists
+      shell: sudo rm -rf /home/ubuntu/*
 
-    - name: Install JDK
-      apt: 
-        name: openjdk-8-jdk
-        update_cache: yes
-        install_recommends: no
+    - name: Add Scripts directory
+      command: mkdir /home/ubuntu/scripts
 
-    - name: Add APT key
-      shell: wget -q -O - https://pkg.jenkins.io/debian/jenkins-ci.org.key | apt-key add - 
-  
-    - name: Copy jenkins.list to /etc/apt/sources.list.d/jenkins.list
-      shell: sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list' 
-  
-    - name: update
-      shell: apt-get update 
+    - name: Transfer executable script mysql
+      copy: src=../aula_inicial/scripts/mysql.sh dest=/home/ubuntu/scripts/mysql.sh mode=0777  
 
-    - name: Install Jenkins
-      shell: apt-get install jenkins
+    - name: update package
+      shell: sudo apt update
+
+    - name: install java JRE
+      shell: sudo apt install default-jre -y
+
+    - name: install java JDK
+      shell: sudo apt install default-jdk -y
+
+    - name: download jenkins
+      shell: wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+
+    - name: run sh jenkins
+      shell: sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+
+    - name: update package
+      shell: sudo apt update
+
+    - name: install jenkins
+      shell: sudo apt install jenkins -y
+
+    - name: allow 8080
+      shell: sudo ufw allow 8080
+
+    - name: allow Openssh
+      shell: sudo ufw allow OpenSSH
+
+    - name: enable status
+      shell: sudo ufw enable
 
     - name: Install MySQL server
-      shell: apt-get -y install mysql-server
+      shell: sudo apt-get -y install mysql-server
 
     - name: Install MySQL client
-      shell: apt-get -y install mysql-client
+      shell: sudo apt-get -y install mysql-client
 
     - name: pip install mysqlclient
       shell: pip install mysqlclient
 
     - name: Start the MySQL service
       action: service name=mysql state=started
+
 
     - name: copy .my.cnf file with root password credentials
       template: src=../configs/mysqld.cnf  dest=/etc/mysql/mysql.conf.d/mysqld.cnf owner=root mode=0600
@@ -115,23 +131,27 @@
       with_sequence: count={{ create_containers }}
 
     
+    - name: add docker group
+      shell: sudo grupadd docker
+
+    - name: add docker user
+      shell: sudo usermod -aG docker $USER s
+
+    
+
+    
 
 
-    - name: Transfer executable script jenkins
-      copy: src=scripts/jenkins.sh dest=/home/ubuntu/jenkins.sh mode=0777
-
-
-    - name: Execute the script jenkins
-      command: sh /home/ubuntu/jenkins.sh
-
-    - name: Transfer executable script mysql
-      copy: src=scripts/mysql.sh dest=/home/ubuntu/mysql.sh mode=0777  
   
-    - name: copy mysql config
-      copy: src=configs dest=/home/ubuntu
+    # - name: Execute the script jenkins
+    #   command: sh /home/ubuntu/jenkins.sh
 
-    - name: Execute the script mysql
-      command: sh /home/ubuntu/mysql.sh
+
+    # - name: copy mysql config
+    #   copy: src=configs dest=/home/ubuntu
+
+    # - name: Execute the script mysql
+    #   command: sh /home/ubuntu/mysql.sh
 
       
 
