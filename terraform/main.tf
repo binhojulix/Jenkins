@@ -79,6 +79,25 @@ resource "aws_security_group" "acesso_9000" {
 }
 
 
+resource "aws_security_group" "acesso_3000" {
+  name        = "acesso_3000"
+  ingress {
+    from_port        = 3000
+    to_port          = 3000
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+    tags = {
+    Name = "http"
+  }
+}
+
 
 
 
@@ -101,6 +120,7 @@ resource "aws_instance" "dev" {
   "${aws_security_group.acesso_8080.id}",
   "${aws_security_group.acesso_3306.id}",
   "${aws_security_group.acesso_9000.id}",
+  "${aws_security_group.acesso_3000.id}",
 ]
 
 }
